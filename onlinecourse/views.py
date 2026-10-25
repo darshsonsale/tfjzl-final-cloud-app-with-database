@@ -113,30 +113,37 @@ def extract_answers(request):
 
 
 def show_exam_result(request, course_id, submission_id):
-
     context = {}
 
-    # get course and submission objects by id
     course = get_object_or_404(Course, pk=course_id)
     submission = get_object_or_404(Submission, pk=submission_id)
-    # get the submitted choices from the submission object
+
     selected_choices = submission.choices.all()
     questions = course.question_set.all()
 
-    # calculate maximum points 
-    max_points = sum([q.question_point for q in questions])
+    possible = sum(q.grade for q in questions)
     student_score = 0
-    # calculate the points achieved by the student
+
     for question in questions:
-        if question.is_get_grade(selected_choices):
-            student_score += question.question_point
-    # calculate the grade
-    grade = int(student_score/max_points * 100)
-    
+        selected_ids = selected_choices.filter(
+            question=question
+        ).values_list('id', flat=True)
+
+        if question.is_get_score(selected_ids):
+            student_score += question.grade
+
+    grade = int(student_score / possible * 100) if possible else 0
+
     context['grade'] = grade
+    context['possible'] = possible
     context['selected_ids'] = selected_choices
     context['course'] = course
-    return render(request, 'onlinecourse/exam_result_bootstrap.html', context)
+
+    return render(
+        request,
+        'onlinecourse/exam_result_bootstrap.html',
+        context
+    )
         
 
 
